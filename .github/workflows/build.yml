@@ -11,36 +11,52 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    container:
+      image: alpine:3.20
+
     steps:
-      - name: Get Whisper source
+      - name: Install build tools
+        run: |
+          apk add --no-cache \
+            git cmake make g++ gcc musl-dev linux-headers binutils
+
+      - name: Download Whisper
         run: |
           git clone --depth 1 --branch v1.7.6 \
             https://github.com/ggml-org/whisper.cpp.git whisper
 
-      - name: Build without AVX
+      - name: Compile static executable
         run: |
           cmake -S whisper -B whisper/build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_FLAGS="-march=x86-64 -mtune=generic -mno-avx -mno-avx2 -mno-fma -mno-f16c" \
-            -DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=generic -mno-avx -mno-avx2 -mno-fma -mno-f16c" \
+            -DCMAKE_C_FLAGS="-O2 -march=x86-64 -mtune=generic -mno-avx -mno-avx2 -mno-fma -mno-f16c" \
+            -DCMAKE_CXX_FLAGS="-O2 -march=x86-64 -mtune=generic -mno-avx -mno-avx2 -mno-fma -mno-f16c" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static" \
             -DGGML_NATIVE=OFF \
             -DGGML_AVX=OFF \
             -DGGML_AVX2=OFF \
             -DGGML_FMA=OFF \
             -DGGML_F16C=OFF \
             -DGGML_OPENMP=OFF \
+            -DGGML_BLAS=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DWHISPER_BUILD_TESTS=OFF \
             -DWHISPER_BUILD_SERVER=OFF
 
-          cmake --build whisper/build --config Release -j 2
+          cmake --build whisper/build -j 2
 
-      - name: Package executable
+      - name: Verify executable
         run: |
-          mkdir -p output
-          cp whisper/build/bin/main output/whisper-main
-          chmod +x output/whisper-main
-          tar -czf synology-whisper.tar.gz -C output whisper-main
+          cp whisper/build/bin/main whisper-main
+          chmod +x whisper-main
+
+          file whisper-main
+          ldd whisper-main || true
+          ./whisper-main --help
+
+      - name: Package
+        run: |
+          tar -czf synology-whisper.tar.gz whisper-main
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
