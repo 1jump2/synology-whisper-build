@@ -1,9 +1,4 @@
-- name: Diagnose CPU instructions
-  run: |
-    objdump -d -M intel \
-      --start-address=0x4fe290 \
-      --stop-address=0x4fe320 \
-      whisper-main
+
 name: Build Whisper for Synology
 
 on:
@@ -57,9 +52,24 @@ jobs:
         run: |
           cp whisper/build/bin/whisper-cli whisper-main
           chmod +x whisper-main
-
           file whisper-main
           ./whisper-main --help
+
+      - name: Diagnose CPU instructions
+        run: |
+          echo "=== CPU instruction diagnostics ==="
+
+          objdump -d -M intel \
+            --start-address=0x4fe290 \
+            --stop-address=0x4fe320 \
+            whisper-main
+
+          echo "=== Previous crash location ==="
+
+          objdump -d -M intel \
+            --start-address=0x4fdbd0 \
+            --stop-address=0x4fdc60 \
+            whisper-main
 
       - name: Package
         run: |
