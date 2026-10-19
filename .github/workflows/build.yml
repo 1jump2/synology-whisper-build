@@ -1,0 +1,50 @@
+
+name: Build Whisper for Synology
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Get Whisper source
+        run: |
+          git clone --depth 1 --branch v1.7.6 \
+            https://github.com/ggml-org/whisper.cpp.git whisper
+
+      - name: Build without AVX
+        run: |
+          cmake -S whisper -B whisper/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-march=x86-64 -mtune=generic -mno-avx -mno-avx2 -mno-fma -mno-f16c" \
+            -DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=generic -mno-avx -mno-avx2 -mno-fma -mno-f16c" \
+            -DGGML_NATIVE=OFF \
+            -DGGML_AVX=OFF \
+            -DGGML_AVX2=OFF \
+            -DGGML_FMA=OFF \
+            -DGGML_F16C=OFF \
+            -DGGML_OPENMP=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_SERVER=OFF
+
+          cmake --build whisper/build --config Release -j 2
+
+      - name: Package executable
+        run: |
+          mkdir -p output
+          cp whisper/build/bin/main output/whisper-main
+          chmod +x output/whisper-main
+          tar -czf synology-whisper.tar.gz -C output whisper-main
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: synology-whisper
+          path: synology-whisper.tar.gz
+          retention-days: 7
