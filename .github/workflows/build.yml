@@ -46,7 +46,7 @@ jobs:
             -DWHISPER_BUILD_TESTS=OFF \
             -DWHISPER_BUILD_SERVER=OFF
 
-          cmake --build whisper/build -j 2
+          cmake --build whisper/build -j 2 --verbose
 
       - name: Verify executable
         run: |
@@ -55,20 +55,19 @@ jobs:
           file whisper-main
           ./whisper-main --help
 
-      - name: Diagnose CPU instructions
+      - name: Check unsupported instructions
         run: |
-          echo "=== CPU instruction diagnostics ==="
+          echo "=== BMI2 instructions found ==="
+
+          objdump -d -M intel whisper-main \
+            | grep -E '[[:space:]](shlx|shrx|sarx|mulx|rorx|bzhi|pdep|pext)[[:space:]]' \
+            | head -30 || true
+
+          echo "=== Instruction at previous crash address ==="
 
           objdump -d -M intel \
-            --start-address=0x4fe290 \
-            --stop-address=0x4fe320 \
-            whisper-main
-
-          echo "=== Previous crash location ==="
-
-          objdump -d -M intel \
-            --start-address=0x4fdbd0 \
-            --stop-address=0x4fdc60 \
+            --start-address=0x4fe2d0 \
+            --stop-address=0x4fe2e8 \
             whisper-main
 
       - name: Package
