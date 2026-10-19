@@ -47,11 +47,10 @@ jobs:
 
       - name: Verify executable
         run: |
-          cp whisper/build/bin/main whisper-main
+          cp whisper/build/bin/whisper-cli whisper-main
           chmod +x whisper-main
 
           file whisper-main
-          ldd whisper-main || true
           ./whisper-main --help
 
       - name: Package
