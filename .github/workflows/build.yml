@@ -34,6 +34,7 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-static" \
             -DGGML_NATIVE=OFF \
             -DGGML_CPU_ALL_VARIANTS=OFF \
+            -DGGML_BMI2=OFF \
             -DGGML_SSE42=OFF \
             -DGGML_AVX_VNNI=OFF \
             -DGGML_AVX=OFF \
@@ -57,18 +58,17 @@ jobs:
 
       - name: Check unsupported instructions
         run: |
-          echo "=== BMI2 instructions found ==="
+          echo "=== Checking for BMI2 instructions ==="
 
-          objdump -d -M intel whisper-main \
-            | grep -E '[[:space:]](shlx|shrx|sarx|mulx|rorx|bzhi|pdep|pext)[[:space:]]' \
-            | head -30 || true
+          objdump -d -M intel whisper-main > disassembly.txt
 
-          echo "=== Instruction at previous crash address ==="
+          if grep -Eq '[[:space:]](shlx|shrx|sarx|mulx|rorx|bzhi|pdep|pext)[[:space:]]' disassembly.txt; then
+            echo "ERROR: Unsupported BMI2 instructions found"
+            grep -E '[[:space:]](shlx|shrx|sarx|mulx|rorx|bzhi|pdep|pext)[[:space:]]' disassembly.txt | head -20
+            exit 1
+          fi
 
-          objdump -d -M intel \
-            --start-address=0x4fe2d0 \
-            --stop-address=0x4fe2e8 \
-            whisper-main
+          echo "PASS: No BMI2 instructions found"
 
       - name: Package
         run: |
