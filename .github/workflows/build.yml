@@ -18,7 +18,7 @@ jobs:
       - name: Install build tools
         run: |
           apk add --no-cache \
-            git cmake make g++ gcc musl-dev linux-headers binutils
+            git cmake make g++ gcc musl-dev linux-headers binutils file
 
       - name: Download Whisper
         run: |
